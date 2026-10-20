@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Uses the environment variable if set, or falls back to your live Render backend URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://foodloop-backend.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://foodloop-cbo9.onrender.com/api';
 
 const API = axios.create({
   baseURL: API_BASE_URL,
