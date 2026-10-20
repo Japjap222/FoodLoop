@@ -1,8 +1,11 @@
 // frontend/src/services/api.js
 import axios from 'axios';
 
+// Uses the environment variable if set, or falls back to your live Render backend URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://foodloop-backend.onrender.com/api';
+
 const API = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: API_BASE_URL,
 });
 
 // Attach JWT token to requests if available
