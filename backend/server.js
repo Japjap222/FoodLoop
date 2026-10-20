@@ -1,4 +1,3 @@
-// backend/server.js
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -16,13 +15,35 @@ connectDB();
 
 const app = express();
 
+// Updated CORS: Include live Vercel frontend domain alongside localhost and Render
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'https://foodloop-cbo9.onrender.com', // Render live deployment
+  'https://food-loop-5ged.vercel.app',  // Live Vercel Frontend
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
 app.use(express.json());
+
+// Root / Health-check route for Render health checks
+app.get('/', (req, res) => {
+  res.send('FoodLoop API is running...');
+});
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -34,7 +55,6 @@ app.get('/api/stats', async (req, res) => {
   try {
     const availableCount = await FoodListing.countDocuments({ status: 'Available' });
     const reservationCount = await Reservation.countDocuments();
-    // Count both Donors AND Admins as food providers
     const providerCount = await User.countDocuments({ role: { $in: ['Donor', 'Admin'] } });
     
     const completedReservations = await Reservation.find({ status: { $in: ['Picked up', 'Completed', 'Ready'] } });
@@ -67,7 +87,6 @@ app.get('/api/reports', async (req, res) => {
     const totalWeightKg = Math.round(mealsRescued * 0.4);
     const estimatedValueSaved = mealsRescued * 50;
 
-    // Count both Donors AND Admins as active partners
     const activePartners = await User.countDocuments({ role: { $in: ['Donor', 'Admin'] } });
 
     const categoryCounts = await FoodListing.aggregate([
@@ -100,4 +119,5 @@ app.get('/api/reports', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
