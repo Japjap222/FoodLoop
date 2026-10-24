@@ -1,39 +1,182 @@
-// frontend/src/services/api.js
+
 import axios from 'axios';
 
-// Uses the environment variable if set, or falls back to your live Render backend URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://foodloop-cbo9.onrender.com/api';
+// ==============================
+// API CONFIGURATION
+// ==============================
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV
+    ? 'http://localhost:5000/api'
+    : 'https://foodloop-cbo9.onrender.com/api');
 
 const API = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// Attach JWT token to requests if available
-API.interceptors.request.use((req) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    req.headers.Authorization = `Bearer ${token}`;
-  }
-  return req;
-});
+// Automatically attach the login token to requests.
+API.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
 
-// Auth & User Endpoints
-export const loginUser = (credentials) => API.post('/auth/login', credentials);
-export const registerUser = (userData) => API.post('/auth/register', userData);
-export const fetchProviders = () => API.get('/auth/providers');
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
 
-// Food Listing Endpoints
-export const fetchListings = () => API.get('/listings');
-export const createListing = (data) => API.post('/listings', data);
-export const deleteListing = (id) => API.delete(`/listings/${id}`);
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-// Reservation Endpoints
-export const fetchReservations = () => API.get('/reservations');
-export const createReservation = (data) => API.post('/reservations', data);
-export const updateReservationStatus = (id, status) => API.patch(`/reservations/${id}/status`, { status });
+// ==============================
+// AUTHENTICATION
+// ==============================
 
-// Analytics & Reports Endpoints
-export const fetchStats = () => API.get('/stats');
-export const fetchReportStats = () => API.get('/reports');
+export const loginUser = (credentials) =>
+  API.post('/auth/login', credentials);
+
+export const registerUser = (userData) =>
+  API.post('/auth/register', userData);
+
+export const verifyEmailOtp = (data) =>
+  API.post('/auth/verify-email', data);
+
+export const resendEmailOtp = (data) =>
+  API.post('/auth/resend-verification', data);
+
+export const changePassword = (data) =>
+  API.patch('/auth/change-password', data);
+
+export const deleteMyAccount = (data) =>
+  API.delete('/auth/me', { data });
+
+// ==============================
+// PROVIDERS AND ADMIN ACCOUNTS
+// ==============================
+
+export const fetchAllAccounts = () =>
+  API.get('/auth/accounts');
+
+export const fetchProviders = () =>
+  API.get('/auth/providers');
+
+export const fetchAccounts = () =>
+  API.get('/auth/accounts');
+
+export const deactivateProvider = (id) =>
+  API.patch(`/auth/providers/${id}/deactivate`);
+
+export const reactivateProvider = (id) =>
+  API.patch(`/auth/providers/${id}/reactivate`);
+
+export const archiveProvider = (id) =>
+  API.patch(`/auth/providers/${id}/archive`);
+
+export const restoreProvider = (id) =>
+  API.patch(`/auth/providers/${id}/restore`);
+
+// ==============================
+// FOOD LISTINGS
+// ==============================
+
+export const fetchListings = () =>
+  API.get('/listings');
+
+export const createListing = (listingData) =>
+  API.post('/listings', listingData);
+
+export const updateListing = (id, listingData) =>
+  API.put(`/listings/${id}`, listingData);
+
+export const deleteListing = (id) =>
+  API.delete(`/listings/${id}`);
+
+// ==============================
+// RESERVATIONS
+// ==============================
+
+export const fetchReservations = () =>
+  API.get('/reservations');
+
+// Reservations specifically for donors.
+export const fetchDonorReservations = () =>
+  API.get('/reservations/donor');
+
+// Reservations belonging to the currently logged-in user.
+export const fetchMyReservations = () =>
+  API.get('/reservations/my');
+
+export const createReservation = (reservationData) =>
+  API.post('/reservations', reservationData);
+
+export const updateReservationStatus = (id, status) =>
+  API.patch(`/reservations/${id}/status`, { status });
+
+// ==============================
+// STATISTICS AND REPORTS
+// ==============================
+
+export const fetchStats = () =>
+  API.get('/reports');
+
+export const fetchReportStats = () =>
+  API.get('/reports');
+
+// ==============================
+// APPEALS
+// ==============================
+
+// ==============================
+// APPEALS
+// ==============================
+
+export const fetchAppeals = () =>
+  API.get('/appeals');
+
+export const fetchAllAppeals = () =>
+  API.get('/appeals');
+
+export const fetchMyAppeals = () =>
+  API.get('/appeals/my');
+
+export const submitAppeal = (appealData) =>
+  API.post('/appeals', appealData);
+
+export const createAppeal = (appealData) =>
+  API.post('/appeals', appealData);
+
+export const reviewAppeal = (id, reviewData) =>
+  API.patch(`/appeals/${id}`, reviewData);
+
+export const updateAppeal = (id, appealData) =>
+  API.patch(`/appeals/${id}`, appealData);
+
+export const deleteAppeal = (id) =>
+  API.delete(`/appeals/${id}`);
+
+// ==============================
+// REVIEWS
+// ==============================
+
+export const fetchReviews = () =>
+  API.get('/reviews');
+
+export const fetchMyReviews = () =>
+  API.get('/reviews/my');
+
+export const createReview = (reviewData) =>
+  API.post('/reviews', reviewData);
+
+export const updateReview = (id, reviewData) =>
+  API.put(`/reviews/${id}`, reviewData);
+
+export const deleteReview = (id) =>
+  API.delete(`/reviews/${id}`);
+
+// ==============================
+// DEFAULT EXPORT
+// ==============================
 
 export default API;

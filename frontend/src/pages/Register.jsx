@@ -1,126 +1,344 @@
-import React, { useState } from 'react';
-import { registerUser } from '../services/api';
 
-export const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
+import React, { useState } from 'react';
+import {
+  registerUser,
+  verifyEmailOtp,
+  resendEmailOtp,
+} from '../services/api';
+
+export const Register = ({ onRegisterSuccess, onNavigate }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('Recipient');
   const [organization, setOrganization] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const [otp, setOtp] = useState('');
+  const [verificationStep, setVerificationStep] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  const handleRegister = async (event) => {
+    event.preventDefault();
     setError('');
-    setLoading(true);
+    setMessage('');
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
 
     try {
-      const res = await registerUser({ name, email, password, role, organization });
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      onRegisterSuccess(res.data.user);
+      setLoading(true);
+
+      await registerUser({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        role,
+        organization: organization.trim(),
+      });
+
+      setVerificationStep(true);
+      setMessage(
+        'We sent a verification code to your email. Check your inbox and spam folder.'
+      );
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      setError(
+        err.response?.data?.message ||
+          'Registration failed. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  const handleVerify = async (event) => {
+    event.preventDefault();
+    setError('');
+    setMessage('');
+
+    if (!/^\d{6}$/.test(otp)) {
+      setError('Enter the six-digit code sent to your email.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await verifyEmailOtp({
+        email: email.trim().toLowerCase(),
+        otp,
+      });
+
+      const data = response.data;
+
+      if (!data.token || !data.user) {
+        setError('Verification succeeded, but login information was not returned.');
+        return;
+      }
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      onRegisterSuccess(data.user);
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          'Email verification failed. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setError('');
+    setMessage('');
+
+    try {
+      setResending(true);
+
+      const response = await resendEmailOtp({
+        email: email.trim().toLowerCase(),
+      });
+
+      setMessage(
+        response.data?.message ||
+          'If your account needs verification, a new code will be sent.'
+      );
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          'Could not resend the code. Please try again later.'
+      );
+    } finally {
+      setResending(false);
+    }
+  };
+
   return (
-    <div className="max-w-md mx-auto my-12 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Create an account</h2>
-        <p className="text-sm text-gray-500 mt-1">Join FoodLoop as a Donor, Recipient, or Partner</p>
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-10">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
+        <h1 className="mb-2 text-center text-3xl font-bold text-green-700">
+          FoodLoop
+        </h1>
 
-      {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl">
-          {error}
-        </div>
-      )}
+        <h2 className="mb-2 text-center text-xl font-semibold text-gray-800">
+          {verificationStep ? 'Verify your email' : 'Create an account'}
+        </h2>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">Full Name</label>
-          <input
-            type="text"
-            required
-            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            placeholder="Jane Doe"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
+        <p className="mb-6 text-center text-sm text-gray-600">
+          {verificationStep
+            ? `Enter the six-digit code sent to ${email}.`
+            : 'Join FoodLoop and help reduce food waste.'}
+        </p>
 
-        <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">Email address</label>
-          <input
-            type="email"
-            required
-            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            placeholder="you@domain.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
+        {error && (
+          <div
+            role="alert"
+            className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700"
+          >
+            {error}
+          </div>
+        )}
 
-        <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">Password</label>
-          <input
-            type="password"
-            required
-            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
+        {message && (
+          <div
+            role="status"
+            className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700"
+          >
+            {message}
+          </div>
+        )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Role</label>
-            <select
-              className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
+        {!verificationStep ? (
+          <form onSubmit={handleRegister} className="space-y-4">
+            <div>
+              <label htmlFor="register-name" className="mb-1 block text-sm font-medium">
+                Full name
+              </label>
+              <input
+                id="register-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                maxLength={100}
+                autoComplete="name"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-600"
+                placeholder="Enter your full name"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="register-email" className="mb-1 block text-sm font-medium">
+                Email address
+              </label>
+              <input
+                id="register-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                maxLength={254}
+                autoComplete="email"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-600"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="register-password" className="mb-1 block text-sm font-medium">
+                Password
+              </label>
+              <input
+                id="register-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                maxLength={128}
+                autoComplete="new-password"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-600"
+                placeholder="At least 8 characters"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="register-confirm-password" className="mb-1 block text-sm font-medium">
+                Confirm password
+              </label>
+              <input
+                id="register-confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={8}
+                maxLength={128}
+                autoComplete="new-password"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-600"
+                placeholder="Enter your password again"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="register-role" className="mb-1 block text-sm font-medium">
+                Account type
+              </label>
+              <select
+                id="register-role"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-600"
+              >
+                <option value="Recipient">Recipient</option>
+                <option value="Donor">Donor</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="register-organization" className="mb-1 block text-sm font-medium">
+                Organization (optional)
+              </label>
+              <input
+                id="register-organization"
+                type="text"
+                value={organization}
+                onChange={(e) => setOrganization(e.target.value)}
+                maxLength={150}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-600"
+                placeholder="Organization or business name"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-lg bg-green-700 px-4 py-3 font-semibold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <option value="Recipient">Recipient</option>
-              <option value="Donor">Donor</option>
-              <option value="Admin">Admin</option>
-            </select>
-          </div>
+              {loading ? 'Creating account...' : 'Create account'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleVerify} className="space-y-4">
+            <div>
+              <label htmlFor="register-otp" className="mb-1 block text-sm font-medium">
+                Six-digit verification code
+              </label>
+              <input
+                id="register-otp"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={otp}
+                onChange={(e) =>
+                  setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
+                }
+                required
+                pattern="[0-9]{6}"
+                maxLength={6}
+                className="w-full rounded-lg border border-gray-300 px-3 py-3 text-center text-2xl tracking-[0.5em] outline-none focus:border-green-600"
+                placeholder="000000"
+              />
+            </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Organization</label>
-            <input
-              type="text"
-              className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-              placeholder="e.g. Campus Bakery"
-              value={organization}
-              onChange={(e) => setOrganization(e.target.value)}
-            />
-          </div>
-        </div>
+            <button
+              type="submit"
+              disabled={loading || otp.length !== 6}
+              className="w-full rounded-lg bg-green-700 px-4 py-3 font-semibold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? 'Verifying...' : 'Verify email'}
+            </button>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-semibold py-3 rounded-full transition shadow-sm"
-        >
-          {loading ? 'Creating Account...' : 'Register'}
-        </button>
-      </form>
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resending || loading}
+              className="w-full rounded-lg border border-green-700 px-4 py-3 font-semibold text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {resending ? 'Sending code...' : 'Resend verification code'}
+            </button>
 
-      <div className="text-center text-xs text-gray-500 pt-2 border-t border-gray-100">
-        Already have an account?{' '}
-        <button
-          onClick={onSwitchToLogin}
-          className="text-brand-600 font-semibold hover:underline"
-        >
-          Sign in
-        </button>
+            <button
+              type="button"
+              onClick={() => {
+                setVerificationStep(false);
+                setOtp('');
+                setError('');
+                setMessage('');
+              }}
+              className="w-full text-sm text-gray-600 hover:underline"
+            >
+              Back to registration
+            </button>
+          </form>
+        )}
+
+        <p className="mt-6 text-center text-sm text-gray-600">
+          Already have an account?{' '}
+          <button
+            type="button"
+            onClick={() => onNavigate?.('login')}
+            className="font-semibold text-green-700 hover:underline"
+          >
+            Sign in
+          </button>
+        </p>
       </div>
     </div>
   );
 };
+
+export default Register;

@@ -1,3 +1,267 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ========================================
+   FOODLOOP GLOBAL THEME SYSTEM
+   ======================================== */
+
+:root {
+  color-scheme: light;
+
+  --app-bg: #f8faf9;
+  --surface-bg: #ffffff;
+  --surface-secondary: #f1f5f3;
+
+  --text-primary: #17211b;
+  --text-secondary: #647067;
+
+  --border-color: #e2e8e4;
+
+  --accent-color: #059669;
+  --accent-hover: #047857;
+  --accent-soft: #d1fae5;
+
+  --danger-color: #dc2626;
+  --success-color: #059669;
+
+  --input-bg: #ffffff;
+  --shadow-color: rgb(15 23 42 / 8%);
+}
+
+/* ========================================
+   DARK THEME
+   ======================================== */
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --app-bg: #111714;
+  --surface-bg: #1b2420;
+  --surface-secondary: #25312b;
+
+  --text-primary: #f1f5f2;
+  --text-secondary: #b0bdb5;
+
+  --border-color: #37463d;
+
+  --accent-color: #34d399;
+  --accent-hover: #6ee7b7;
+  --accent-soft: #173c2d;
+
+  --danger-color: #f87171;
+  --success-color: #34d399;
+
+  --input-bg: #202b25;
+  --shadow-color: rgb(0 0 0 / 25%);
+}
+
+/* ========================================
+   SYSTEM THEME
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="system"] {
+    color-scheme: dark;
+
+    --app-bg: #111714;
+    --surface-bg: #1b2420;
+    --surface-secondary: #25312b;
+
+    --text-primary: #f1f5f2;
+    --text-secondary: #b0bdb5;
+
+    --border-color: #37463d;
+
+    --accent-color: #34d399;
+    --accent-hover: #6ee7b7;
+    --accent-soft: #173c2d;
+
+    --danger-color: #f87171;
+    --success-color: #34d399;
+
+    --input-bg: #202b25;
+    --shadow-color: rgb(0 0 0 / 25%);
+  }
+}
+
+/* ========================================
+   GLOBAL PAGE DEFAULTS
+   ======================================== */
+
+html {
+  min-height: 100%;
+  background-color: var(--app-bg);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background-color: var(--app-bg);
+  color: var(--text-primary);
+
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+/* ========================================
+   THEME UTILITY CLASSES
+   ======================================== */
+
+@layer utilities {
+  .bg-surface-bg {
+    background-color: var(--app-bg);
+  }
+
+  .bg-theme-surface {
+    background-color: var(--surface-bg);
+  }
+
+  .bg-theme-secondary {
+    background-color: var(--surface-secondary);
+  }
+
+  .text-theme-primary {
+    color: var(--text-primary);
+  }
+
+  .text-theme-secondary {
+    color: var(--text-secondary);
+  }
+
+  .border-theme {
+    border-color: var(--border-color);
+  }
+}
+
+/* ========================================
+   DARK MODE: EXISTING TAILWIND CLASSES
+   ======================================== */
+
+/* Page backgrounds and cards */
+html[data-theme="dark"] .bg-white,
+html[data-theme="dark"] .bg-gray-50,
+html[data-theme="dark"] .bg-gray-100 {
+  background-color: var(--surface-bg) !important;
+}
+
+/* Primary text */
+html[data-theme="dark"] .text-gray-900,
+html[data-theme="dark"] .text-gray-800,
+html[data-theme="dark"] .text-gray-700 {
+  color: var(--text-primary) !important;
+}
+
+/* Secondary text */
+html[data-theme="dark"] .text-gray-600,
+html[data-theme="dark"] .text-gray-500,
+html[data-theme="dark"] .text-gray-400 {
+  color: var(--text-secondary) !important;
+}
+
+/* Borders */
+html[data-theme="dark"] .border-gray-100,
+html[data-theme="dark"] .border-gray-200,
+html[data-theme="dark"] .border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+
+/* Form controls */
+html[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+  color: var(--text-secondary);
+}
+
+/* Hover backgrounds */
+html[data-theme="dark"] .hover\:bg-gray-50:hover,
+html[data-theme="dark"] .hover\:bg-gray-100:hover {
+  background-color: var(--surface-secondary) !important;
+}
+
+/* ========================================
+   SYSTEM MODE: EXISTING TAILWIND CLASSES
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="system"] .bg-white,
+  html[data-theme="system"] .bg-gray-50,
+  html[data-theme="system"] .bg-gray-100 {
+    background-color: var(--surface-bg) !important;
+  }
+
+  html[data-theme="system"] .text-gray-900,
+  html[data-theme="system"] .text-gray-800,
+  html[data-theme="system"] .text-gray-700 {
+    color: var(--text-primary) !important;
+  }
+
+  html[data-theme="system"] .text-gray-600,
+  html[data-theme="system"] .text-gray-500,
+  html[data-theme="system"] .text-gray-400 {
+    color: var(--text-secondary) !important;
+  }
+
+  html[data-theme="system"] .border-gray-100,
+  html[data-theme="system"] .border-gray-200,
+  html[data-theme="system"] .border-gray-300 {
+    border-color: var(--border-color) !important;
+  }
+
+  html[data-theme="system"] input:not([type="checkbox"]):not([type="radio"]),
+  html[data-theme="system"] select,
+  html[data-theme="system"] textarea {
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+  }
+
+  html[data-theme="system"] input::placeholder,
+  html[data-theme="system"] textarea::placeholder {
+    color: var(--text-secondary);
+  }
+
+  html[data-theme="system"] .hover\:bg-gray-50:hover,
+  html[data-theme="system"] .hover\:bg-gray-100:hover {
+    background-color: var(--surface-secondary) !important;
+  }
+}
+
+/* ========================================
+   INPUT DEFAULTS
+   ======================================== */
+
+input,
+select,
+textarea {
+  color: var(--text-primary);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-secondary);
+}
+
+/* ========================================
+   REDUCED MOTION
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
