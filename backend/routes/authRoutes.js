@@ -81,8 +81,11 @@ const generateOtp = () =>
   crypto.randomInt(0, 1000000).toString().padStart(6, '0');
 
 const sendOtpEmail = async (email, otp) => {
-  console.log(`[DEV OTP CODE] Email: ${email} | OTP: ${otp}`); // <-- Add this line
-  
+  // Add this log statement so you can grab the code from Render
+  console.log(`========================================`);
+  console.log(`VERIFICATION CODE FOR ${email}: ${otp}`);
+  console.log(`========================================`);
+
   if (!resend) {
     console.warn('Email service is not configured.');
     return null;
