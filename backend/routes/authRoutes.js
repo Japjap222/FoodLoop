@@ -82,35 +82,41 @@ const generateOtp = () =>
 
 const sendOtpEmail = async (email, otp) => {
   if (!resend) {
-    throw new Error('Email service is not configured.');
+    console.warn('Email service is not configured.');
+    return null;
   }
 
   const from =
     process.env.RESEND_FROM_EMAIL || 'FoodLoop <onboarding@resend.dev>';
 
-  const { data, error } = await resend.emails.send({
-    from,
-    to: [email],
-    subject: 'Your FoodLoop verification code',
-    text: `Your FoodLoop verification code is ${otp}. It expires in five minutes. If you did not request this, you can ignore this email.`,
-    html: `
-      <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:24px;color:#1f2937">
-        <h1 style="color:#16a34a">FoodLoop</h1>
-        <h2>Verify your email address</h2>
-        <p>Use this code to finish creating your FoodLoop account:</p>
-        <div style="font-size:32px;font-weight:700;letter-spacing:8px;padding:18px 0;color:#15803d">${otp}</div>
-        <p>This code expires in <strong>five minutes</strong>.</p>
-        <p>If you did not request this code, you can ignore this email.</p>
-      </div>
-    `,
-  });
+  try {
+    const { data, error } = await resend.emails.send({
+      from,
+      to: [email],
+      subject: 'Your FoodLoop verification code',
+      text: `Your FoodLoop verification code is ${otp}. It expires in five minutes. If you did not request this, you can ignore this email.`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:24px;color:#1f2937">
+          <h1 style="color:#16a34a">FoodLoop</h1>
+          <h2>Verify your email address</h2>
+          <p>Use this code to finish creating your FoodLoop account:</p>
+          <div style="font-size:32px;font-weight:700;letter-spacing:8px;padding:18px 0;color:#15803d">${otp}</div>
+          <p>This code expires in <strong>five minutes</strong>.</p>
+          <p>If you did not request this code, you can ignore this email.</p>
+        </div>
+      `,
+    });
 
-  if (error) {
-    console.error('Resend email error:', error.message);
-    throw new Error('Could not send the verification email.');
+    if (error) {
+      console.error('Resend email error:', error.message);
+      return null;
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Failed to send OTP email:', err.message);
+    return null;
   }
-
-  return data;
 };
 
 // POST /api/auth/register
@@ -209,19 +215,7 @@ router.post('/register', async (req, res) => {
 
       await existingUser.save();
 
-      try {
-        await sendOtpEmail(normalizedEmail, otp);
-      } catch (emailError) {
-        existingUser.emailOtpHash = undefined;
-        existingUser.emailOtpExpiresAt = undefined;
-        existingUser.emailOtpAttempts = 0;
-        existingUser.emailOtpLastSentAt = undefined;
-        await existingUser.save();
-
-        return res.status(502).json({
-          message: emailError.message,
-        });
-      }
+      await sendOtpEmail(normalizedEmail, otp);
 
       return res.status(200).json({
         message: 'A new verification code has been sent to your email.',
@@ -248,18 +242,7 @@ router.post('/register', async (req, res) => {
 
     await createdUser.save();
 
-    try {
-      await sendOtpEmail(normalizedEmail, otp);
-    } catch (emailError) {
-      await User.deleteOne({
-        _id: createdUser._id,
-        emailVerified: false,
-      });
-
-      return res.status(502).json({
-        message: emailError.message,
-      });
-    }
+    await sendOtpEmail(normalizedEmail, otp);
 
     return res.status(201).json({
       message: 'Verification code sent. Check your email to finish registration.',
@@ -412,19 +395,7 @@ router.post('/resend-verification', async (req, res) => {
 
     await user.save();
 
-    try {
-      await sendOtpEmail(email, otp);
-    } catch (emailError) {
-      user.emailOtpHash = undefined;
-      user.emailOtpExpiresAt = undefined;
-      user.emailOtpAttempts = 0;
-      user.emailOtpLastSentAt = undefined;
-      await user.save();
-
-      return res.status(502).json({
-        message: emailError.message,
-      });
-    }
+    await sendOtpEmail(email, otp);
 
     return res.json({
       message: 'A new verification code has been sent.',
