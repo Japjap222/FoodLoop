@@ -29,6 +29,9 @@ const allowedOrigins = [
   'http://127.0.0.1:5175',
   'https://foodloop-cbo9.onrender.com',
   'https://food-loop-5ged.vercel.app',
+  'https://food-loop-ht0d.onrender.com',
+  'https://foodloopph.vercel.app',
+  'https://foodloop-f2u8ph5w3-food-loop1.vercel.app',
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
