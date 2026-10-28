@@ -154,6 +154,7 @@ export const Navbar = ({ user, onLogout, onNavigate, activeTab }) => {
   };
 
   // Navigate home first, then retry scrolling until the section exists.
+  // Navigate home first if needed, then smooth scroll to the target element
   const scrollToSection = (id) => {
     closeModal();
 
@@ -169,7 +170,7 @@ export const Navbar = ({ user, onLogout, onNavigate, activeTab }) => {
       if (section) {
         section.scrollIntoView({
           behavior: 'smooth',
-          block: 'center',
+          block: 'start',
         });
         return;
       }
@@ -185,7 +186,7 @@ export const Navbar = ({ user, onLogout, onNavigate, activeTab }) => {
       }
     };
 
-    window.setTimeout(tryScroll, 0);
+    window.setTimeout(tryScroll, 100);
   };
 
   const loadReservations = useCallback(async () => {
@@ -451,9 +452,7 @@ export const Navbar = ({ user, onLogout, onNavigate, activeTab }) => {
 
             <button
               type="button"
-              onClick={() => {
-                document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
-              }}
+              onClick={() => scrollToSection('how-it-works')}
               className="text-gray-600 hover:text-brand-600"
             >
               How It Works
