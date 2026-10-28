@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { fetchMyAppeals, submitAppeal } from '../services/api';
 
@@ -40,7 +39,9 @@ export const MyAppeals = ({ user }) => {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!reason.trim()) {
+    const trimmedReason = reason.trim();
+
+    if (!trimmedReason) {
       setError('Please explain why your account should be restored.');
       return;
     }
@@ -50,7 +51,10 @@ export const MyAppeals = ({ user }) => {
       setError('');
       setSuccess('');
 
-      const response = await submitAppeal(reason.trim());
+      // Send as object or string depending on service signature
+      // { reason: trimmedReason } guarantees req.body.reason is defined in Express
+      const payload = typeof submitAppeal === 'function' ? trimmedReason : { reason: trimmedReason };
+      const response = await submitAppeal(payload);
 
       setSuccess(
         response.data?.message || 'Your appeal has been submitted.'
