@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { StatusBadge } from '../components/StatusBadge';
 import {
@@ -76,7 +75,7 @@ const normalizeSchedule = (schedule) => {
 
     return {
       day,
-      enabled: Boolean(saved?.enabled),
+      enabled: saved?.isAvailable !== undefined ? Boolean(saved.isAvailable) : Boolean(saved?.enabled),
       startTime: saved?.startTime || '09:00',
       endTime: saved?.endTime || '17:00',
     };
@@ -160,8 +159,6 @@ export const FoodListings = ({ user }) => {
         ? response.data
         : response.data?.listings || [];
 
-      // Do not hide reserved, expired, or unavailable listings
-      // from the management page.
       setListings(data);
     } catch (error) {
       console.error('Failed to load listings:', error);
@@ -309,12 +306,12 @@ export const FoodListings = ({ user }) => {
       pickupSchedule: form.pickupSchedule.map((entry) => ({
         day: entry.day,
         enabled: entry.enabled,
+        isAvailable: entry.enabled, // Transmit isAvailable explicitly
         startTime: entry.startTime,
         endTime: entry.endTime,
       })),
     };
 
-    // Do not change quantity for listings that are no longer Available.
     if (canEditQuantity) {
       payload.quantity = Number(form.quantity);
     }
