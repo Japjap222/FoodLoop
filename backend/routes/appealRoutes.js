@@ -10,6 +10,14 @@ const router = express.Router();
 // Restricted users may still submit appeals.
 router.post('/', protect, async (req, res) => {
   try {
+    const userId = req.user?._id || req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        message: 'Authentication failed. User ID not found.',
+      });
+    }
+
     if (!['Donor', 'Recipient'].includes(req.user.role)) {
       return res.status(403).json({
         message: 'Only Donors and Recipients can submit appeals.',
@@ -17,7 +25,7 @@ router.post('/', protect, async (req, res) => {
     }
 
     const reason =
-      typeof req.body.reason === 'string'
+      typeof req.body?.reason === 'string'
         ? req.body.reason.trim()
         : '';
 
@@ -35,7 +43,7 @@ router.post('/', protect, async (req, res) => {
 
     // Prevent multiple pending appeals for the same account.
     const pendingAppeal = await Appeal.findOne({
-      user: req.user.id,
+      user: userId,
       status: 'Pending',
     });
 
@@ -47,8 +55,9 @@ router.post('/', protect, async (req, res) => {
     }
 
     const appeal = await Appeal.create({
-      user: req.user.id,
+      user: userId,
       reason,
+      status: 'Pending',
     });
 
     const result = await Appeal.findById(appeal._id)
@@ -62,6 +71,7 @@ router.post('/', protect, async (req, res) => {
     console.error('Submit appeal error:', error);
     return res.status(500).json({
       message: 'Could not submit your appeal.',
+      error: error.message,
     });
   }
 });
@@ -69,8 +79,14 @@ router.post('/', protect, async (req, res) => {
 // Handler for fetching logged-in user's appeals
 const getMyAppealsHandler = async (req, res) => {
   try {
+    const userId = req.user?._id || req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'User ID not found in token.' });
+    }
+
     const appeals = await Appeal.find({
-      user: req.user.id,
+      user: userId,
     }).sort({ createdAt: -1 });
 
     return res.json(appeals);
@@ -78,6 +94,7 @@ const getMyAppealsHandler = async (req, res) => {
     console.error('Fetch my appeals error:', error);
     return res.status(500).json({
       message: 'Could not load your appeals.',
+      error: error.message,
     });
   }
 };
@@ -102,6 +119,7 @@ router.get('/', protect, authorize('Admin'), async (req, res) => {
     console.error('Fetch all appeals error:', error);
     return res.status(500).json({
       message: 'Could not load appeals.',
+      error: error.message,
     });
   }
 });
@@ -114,7 +132,8 @@ router.patch(
   authorize('Admin'),
   async (req, res) => {
     try {
-      const { status, adminResponse = '' } = req.body;
+      const { status, adminResponse = '' } = req.body || {};
+      const reviewerId = req.user?._id || req.user?.id;
 
       if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
         return res.status(400).json({
@@ -161,7 +180,7 @@ router.patch(
 
       appeal.status = status;
       appeal.adminResponse = adminResponse.trim();
-      appeal.reviewedBy = req.user.id;
+      appeal.reviewedBy = reviewerId;
       appeal.reviewedAt = new Date();
 
       // An approved appeal removes restrictions and archive status.
@@ -189,6 +208,7 @@ router.patch(
       console.error('Review appeal error:', error);
       return res.status(500).json({
         message: 'Could not review the appeal.',
+        error: error.message,
       });
     }
   }
