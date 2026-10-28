@@ -1,4 +1,3 @@
-
 import express from 'express';
 import mongoose from 'mongoose';
 import Reservation from '../models/Reservation.js';
@@ -59,9 +58,8 @@ router.get('/', protect, donorOnly, async (req, res) => {
   }
 });
 
-// Get the logged-in recipient's reservations.
-// Restricted recipients can still view their history and appeal.
-router.get('/mine', protect, async (req, res) => {
+// Handler function for fetching recipient reservations
+const getRecipientReservationsHandler = async (req, res) => {
   try {
     if (req.user.role !== 'Recipient') {
       return res.status(403).json({
@@ -84,7 +82,13 @@ router.get('/mine', protect, async (req, res) => {
       error: error.message,
     });
   }
-});
+};
+
+// Get the logged-in recipient's reservations.
+// Restricted recipients can still view their history and appeal.
+router.get('/mine', protect, getRecipientReservationsHandler);
+router.get('/my', protect, getRecipientReservationsHandler);
+router.get('/user', protect, getRecipientReservationsHandler);
 
 // Get reservations belonging to the logged-in donor/admin.
 router.get('/donor', protect, donorOnly, async (req, res) => {
