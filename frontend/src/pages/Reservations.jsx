@@ -6,6 +6,7 @@ import {
   updateReservationStatus,
   createReview,
   fetchMyReviews,
+  fetchDonorReviews,
 } from '../services/api';
 
 const STATUSES = [
@@ -27,6 +28,7 @@ const getSavedUser = () => {
 const normalizeArray = (data) => {
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.reservations)) return data.reservations;
+  if (Array.isArray(data?.reviews)) return data.reviews;
   if (Array.isArray(data?.data)) return data.data;
   return [];
 };
@@ -176,10 +178,10 @@ function ReviewForm({ reservation, onSubmitted }) {
   );
 }
 
-export function DonorReservations({ user: userProp }) {
+export function Reservations({ user: userProp }) {
   const [user, setUser] = useState(userProp || getSavedUser());
   const [reservations, setReservations] = useState([]);
-  const [reviewedIds, setReviewedIds] = useState(new Set());
+  const [reviewsMap, setReviewsMap] = useState(new Map());
   const [statusFilter, setStatusFilter] = useState('All');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -230,45 +232,44 @@ export function DonorReservations({ user: userProp }) {
     }
   }, [userProp]);
 
-  const loadReviewedIds = useCallback(async () => {
+  const loadReviews = useCallback(async () => {
     const currentUser = userProp || getSavedUser();
-
-    if (currentUser?.role !== 'Recipient') {
-      setReviewedIds(new Set());
-      return;
-    }
+    if (!currentUser) return;
 
     try {
-      const response = await fetchMyReviews();
-      const reviews = normalizeArray(response.data);
+      let response;
+      if (currentUser.role === 'Recipient') {
+        response = await fetchMyReviews();
+      } else if (currentUser.role === 'Donor' && typeof fetchDonorReviews === 'function') {
+        response = await fetchDonorReviews(currentUser._id || currentUser.id);
+      } else {
+        return;
+      }
 
-      const ids = reviews
-        .map((review) => {
-          const reservation = review.reservation;
-          return typeof reservation === 'object'
-            ? reservation?._id
-            : reservation;
-        })
-        .filter(Boolean)
-        .map(String);
+      const reviewsList = normalizeArray(response.data);
+      const newMap = new Map();
 
-      setReviewedIds(new Set(ids));
+      reviewsList.forEach((rev) => {
+        const resId =
+          typeof rev.reservation === 'object'
+            ? String(rev.reservation?._id)
+            : String(rev.reservation);
+
+        if (resId) {
+          newMap.set(resId, rev);
+        }
+      });
+
+      setReviewsMap(newMap);
     } catch (err) {
-      console.error('Loading recipient reviews failed:', err);
+      console.error('Loading reviews failed:', err);
     }
   }, [userProp]);
 
   useEffect(() => {
     loadReservations();
-  }, [loadReservations]);
-
-  useEffect(() => {
-    if (isRecipient) {
-      loadReviewedIds();
-    } else {
-      setReviewedIds(new Set());
-    }
-  }, [isRecipient, loadReviewedIds]);
+    loadReviews();
+  }, [loadReservations, loadReviews]);
 
   const updateStatus = async (reservationId, status) => {
     if (!canManageStatus) return;
@@ -332,8 +333,8 @@ export function DonorReservations({ user: userProp }) {
             {isRecipient
               ? 'Track your food pickups and review donors after your reservation is completed.'
               : isDonor
-                ? 'View recipient reservations and update their pickup status.'
-                : 'Review and manage FoodLoop reservations.'}
+                ? 'View recipient reservations, check recipient feedback, and update pickup statuses.'
+                : 'Review and manage FoodLoop reservations and feedback.'}
           </p>
         </div>
 
@@ -341,7 +342,7 @@ export function DonorReservations({ user: userProp }) {
           type="button"
           onClick={() => {
             loadReservations();
-            if (isRecipient) loadReviewedIds();
+            loadReviews();
           }}
           disabled={loading}
           className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
@@ -438,9 +439,7 @@ export function DonorReservations({ user: userProp }) {
                   ? reservation.listing
                   : {};
 
-              const alreadyReviewed = reviewedIds.has(
-                String(reservation._id)
-              );
+              const review = reviewsMap.get(String(reservation._id));
 
               return (
                 <article
@@ -471,7 +470,9 @@ export function DonorReservations({ user: userProp }) {
                     <div className="rounded-xl bg-gray-50 p-4">
                       <p className="text-xs text-gray-500">Recipient</p>
                       <p className="mt-1 font-semibold text-gray-900">
-                        {reservation.recipientName || 'Community Recipient'}
+                        {reservation.recipientName ||
+                          reservation.recipient?.name ||
+                          'Community Recipient'}
                       </p>
                     </div>
                   )}
@@ -517,29 +518,70 @@ export function DonorReservations({ user: userProp }) {
                     )}
                   </div>
 
-                  {/* REVIEW UI EXISTS ONLY FOR RECIPIENTS */}
+                  {/* RECIPIENT SUBMISSION VIEW */}
                   {isRecipient && (
                     <section className="space-y-3 border-t border-gray-100 pt-4">
                       <h4 className="font-bold text-gray-900">
                         Review this donor
                       </h4>
 
-                      {alreadyReviewed ? (
-                        <p className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-                          You have already reviewed this reservation. Thank you!
-                        </p>
+                      {review ? (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-amber-800">
+                              Your Submitted Review
+                            </span>
+                            <span className="text-amber-500 font-bold">
+                              {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                            </span>
+                          </div>
+                          {review.comment && (
+                            <p className="text-sm text-gray-700 italic">
+                              "{review.comment}"
+                            </p>
+                          )}
+                        </div>
                       ) : (
                         <ReviewForm
                           reservation={reservation}
                           onSubmitted={async () => {
-                            await loadReviewedIds();
+                            await loadReviews();
                           }}
                         />
                       )}
                     </section>
                   )}
 
-                  {/* STATUS MANAGEMENT EXISTS ONLY FOR DONOR AND ADMIN */}
+                  {/* DONOR / ADMIN RECEIVED REVIEW VIEW */}
+                  {canManageStatus && (
+                    <section className="space-y-3 border-t border-gray-100 pt-4">
+                      <h4 className="text-sm font-bold text-gray-900">
+                        Recipient Review
+                      </h4>
+
+                      {review ? (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-700">
+                              Rating from {reservation.recipientName || 'Recipient'}
+                            </span>
+                            <span className="text-amber-500 font-bold">
+                              {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700 italic">
+                            "{review.comment || 'No written comment provided.'}"
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="rounded-xl bg-gray-50 p-3 text-xs text-gray-500">
+                          No review submitted by recipient yet.
+                        </p>
+                      )}
+                    </section>
+                  )}
+
+                  {/* STATUS MANAGEMENT FOR DONOR & ADMIN */}
                   {canManageStatus && (
                     <section className="border-t border-gray-100 pt-4">
                       <label
@@ -576,4 +618,4 @@ export function DonorReservations({ user: userProp }) {
   );
 }
 
-export default DonorReservations;
+export default Reservations;
