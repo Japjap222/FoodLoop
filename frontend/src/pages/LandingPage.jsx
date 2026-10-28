@@ -853,50 +853,52 @@ export const LandingPage = ({ user, onNavigate }) => {
       </section>
 
       {/* HOW IT WORKS */}
-      <section className="space-y-8 rounded-3xl border border-theme bg-theme-secondary p-10">
-        <h2 className="text-3xl font-bold text-theme-primary">
-          How FoodLoop works
-        </h2>
-
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {[
-            {
-              number: '01',
-              title: 'Providers list',
-              description:
-                'Post safe surplus food with quantity and expiration time.'
-            },
-            {
-              number: '02',
-              title: 'Recipients reserve',
-              description:
-                'Recipients reserve available food before it expires.'
-            },
-            {
-              number: '03',
-              title: 'Pick up & redistribute',
-              description:
-                'Food is collected on time, keeping good food in use.'
-            }
-          ].map((step) => (
-            <div
-              key={step.number}
-              className={`${SURFACE} space-y-3 rounded-2xl p-6`}
-            >
-              <span className="text-xs font-bold text-emerald-600">
-                {step.number}
-              </span>
-              <h3 className="text-lg font-bold text-theme-primary">
-                {step.title}
-              </h3>
-              <p className="text-xs leading-relaxed text-theme-secondary">
-                {step.description}
-              </p>
+                <section
+            id="how-it-works"
+            className="scroll-mt-24 space-y-8 rounded-3xl border border-theme bg-theme-secondary p-10"
+          >
+            <h2 className="text-3xl font-bold text-theme-primary">
+              How FoodLoop works
+            </h2>
+          
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              {[
+                {
+                  number: '01',
+                  title: 'Providers list',
+                  description:
+                    'Post safe surplus food with quantity and expiration time.',
+                },
+                {
+                  number: '02',
+                  title: 'Recipients reserve',
+                  description:
+                    'Recipients reserve available food before it expires.',
+                },
+                {
+                  number: '03',
+                  title: 'Pick up & redistribute',
+                  description:
+                    'Food is collected on time, keeping good food in use.',
+                },
+              ].map((step) => (
+                <div
+                  key={step.number}
+                  className={`${SURFACE} space-y-3 rounded-2xl p-6`}
+                >
+                  <span className="text-xs font-bold text-emerald-600">
+                    {step.number}
+                  </span>
+                  <h3 className="text-lg font-bold text-theme-primary">
+                    {step.title}
+                  </h3>
+                  <p className="text-xs leading-relaxed text-theme-secondary">
+                    {step.description}
+                  </p>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </section>
-
+          </section>
       {/* WHY JOIN */}
       <section className="space-y-6 rounded-3xl border border-theme bg-theme-secondary p-8 lg:p-12">
         <div className="max-w-xl space-y-2">
