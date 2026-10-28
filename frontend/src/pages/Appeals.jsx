@@ -1,4 +1,3 @@
-
 import React, { useCallback, useEffect, useState } from 'react';
 import { fetchAllAppeals, reviewAppeal } from '../services/api';
 
@@ -31,7 +30,7 @@ export const Appeals = () => {
   }, [loadAppeals]);
 
   const handleReview = async (appeal, status) => {
-    const userName = appeal.user?.name || 'this user';
+    const userName = appeal.user?.name || appeal.user?.organization || 'this user';
 
     if (
       !window.confirm(
@@ -50,11 +49,11 @@ export const Appeals = () => {
       setError('');
       setSuccess('');
 
-      const response = await reviewAppeal(
-        appeal._id,
+      // Pass an object containing both status and adminResponse
+      const response = await reviewAppeal(appeal._id, {
         status,
-        responses[appeal._id] || ''
-      );
+        adminResponse: responses[appeal._id] || '',
+      });
 
       setSuccess(
         response.data?.message || `Appeal ${status.toLowerCase()}.`
