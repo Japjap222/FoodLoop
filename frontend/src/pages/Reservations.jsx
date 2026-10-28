@@ -233,22 +233,25 @@ export function Reservations({ user: userProp }) {
     }
   }, [userProp]);
 
-  const loadReviews = useCallback(async () => {
+  cconst loadReviews = useCallback(async () => {
     const currentUser = userProp || getSavedUser();
     if (!currentUser) return;
 
     try {
       let response;
+
       if (currentUser.role === 'Recipient') {
         response = await fetchMyReviews();
       } else if (currentUser.role === 'Donor') {
-        // Use fetchDonorReviews passing the correct resolved user ID
         const donorId = currentUser._id || currentUser.id || currentUser.userId;
         if (donorId) {
           response = await fetchDonorReviews(donorId);
         } else {
           response = await fetchMyReviews();
         }
+      } else if (currentUser.role === 'Admin') {
+        // Admins fetch all platform reviews
+        response = await fetchReviews();
       } else {
         return;
       }
@@ -257,7 +260,7 @@ export function Reservations({ user: userProp }) {
       const newMap = new Map();
 
       reviewsList.forEach((rev) => {
-        // Extract reservation ID whether it's an object or string ID
+        // Handle cases where reservation is either an object or a plain string ID
         const resId =
           typeof rev.reservation === 'object'
             ? String(rev.reservation?._id || rev.reservation?.id)
