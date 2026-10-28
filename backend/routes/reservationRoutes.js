@@ -5,7 +5,6 @@ import FoodListing from '../models/FoodListing.js';
 import {
   protect,
   donorOnly,
-  requireActiveAccount,
 } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -28,7 +27,7 @@ const getLocalDateTime = (date = new Date()) => {
 };
 
 // Get all reservations for donors/admins.
-// Restricted donors can still view their reservation history.
+// Filters out reservations belonging to deactivated or archived recipient accounts.
 router.get('/', protect, donorOnly, async (req, res) => {
   try {
     let query = {};
@@ -45,10 +44,24 @@ router.get('/', protect, donorOnly, async (req, res) => {
 
     const reservations = await Reservation.find(query)
       .populate('listing')
-      .populate('recipient', 'name email organization')
+      .populate('recipient', 'name email organization accountActive isArchived')
+      .populate('user', 'name email organization accountActive isArchived')
       .sort({ createdAt: -1 });
 
-    return res.json(reservations);
+    const activeReservations = reservations.filter((item) => {
+      const recipientUser = item.recipient || item.user;
+      if (recipientUser && typeof recipientUser === 'object') {
+        if (
+          recipientUser.accountActive === false ||
+          recipientUser.isArchived === true
+        ) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    return res.json(activeReservations);
   } catch (error) {
     console.error('Fetch reservations error:', error);
     return res.status(500).json({
@@ -68,10 +81,11 @@ const getRecipientReservationsHandler = async (req, res) => {
     }
 
     const reservations = await Reservation.find({
-      recipient: req.user.id,
+      $or: [{ recipient: req.user.id }, { user: req.user.id }],
     })
       .populate('listing')
-      .populate('recipient', 'name email organization')
+      .populate('recipient', 'name email organization accountActive isArchived')
+      .populate('user', 'name email organization accountActive isArchived')
       .sort({ createdAt: -1 });
 
     return res.json(reservations);
@@ -85,12 +99,12 @@ const getRecipientReservationsHandler = async (req, res) => {
 };
 
 // Get the logged-in recipient's reservations.
-// Restricted recipients can still view their history and appeal.
 router.get('/mine', protect, getRecipientReservationsHandler);
 router.get('/my', protect, getRecipientReservationsHandler);
 router.get('/user', protect, getRecipientReservationsHandler);
 
 // Get reservations belonging to the logged-in donor/admin.
+// Filters out reservations belonging to deactivated or archived recipient accounts.
 router.get('/donor', protect, donorOnly, async (req, res) => {
   try {
     let query = {};
@@ -106,11 +120,30 @@ router.get('/donor', protect, donorOnly, async (req, res) => {
     }
 
     const reservations = await Reservation.find(query)
-      .populate('listing')
-      .populate('recipient', 'name email organization')
+      .populate({
+        path: 'listing',
+        match: req.user.role === 'Admin' ? {} : { donor: req.user.id },
+      })
+      .populate('recipient', 'name email organization accountActive isArchived')
+      .populate('user', 'name email organization accountActive isArchived')
       .sort({ createdAt: -1 });
 
-    return res.json(reservations);
+    const activeReservations = reservations.filter((item) => {
+      if (!item.listing) return false;
+
+      const recipientUser = item.recipient || item.user;
+      if (recipientUser && typeof recipientUser === 'object') {
+        if (
+          recipientUser.accountActive === false ||
+          recipientUser.isArchived === true
+        ) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    return res.json(activeReservations);
   } catch (error) {
     console.error('Fetch donor reservations error:', error);
     return res.status(500).json({
@@ -121,7 +154,6 @@ router.get('/donor', protect, donorOnly, async (req, res) => {
 });
 
 // Create reservation.
-// Check account restrictions before checking the role.
 router.post('/', protect, async (req, res) => {
   let listing = null;
   let quantityReserved = 0;
@@ -130,7 +162,6 @@ router.post('/', protect, async (req, res) => {
   try {
     const account = req.dbUser || req.user;
 
-    // Archived accounts receive a specific message.
     if (account.isArchived === true) {
       return res.status(403).json({
         code: 'ACCOUNT_ARCHIVED',
@@ -139,7 +170,6 @@ router.post('/', protect, async (req, res) => {
       });
     }
 
-    // Deactivated accounts receive a specific message.
     if (account.accountActive === false) {
       return res.status(403).json({
         code: 'ACCOUNT_DEACTIVATED',
@@ -246,7 +276,7 @@ router.post('/', protect, async (req, res) => {
     );
 
     const recentReservations = await Reservation.find({
-      recipient: personId,
+      $or: [{ recipient: personId }, { user: personId }],
       createdAt: { $gte: windowStart },
     })
       .select('quantityReserved createdAt')
@@ -287,7 +317,7 @@ router.post('/', protect, async (req, res) => {
     }
 
     const duplicate = await Reservation.findOne({
-      recipient: personId,
+      $or: [{ recipient: personId }, { user: personId }],
       listing: listingObjectId,
       createdAt: { $gte: windowStart },
     }).sort({ createdAt: -1 });
@@ -434,6 +464,7 @@ router.post('/', protect, async (req, res) => {
     const reservation = await Reservation.create({
       listing: listing._id,
       recipient: personId,
+      user: personId,
       recipientName: req.user.name || 'Community Recipient',
       quantityReserved,
       reservationDate,
@@ -485,12 +516,10 @@ router.post('/', protect, async (req, res) => {
 });
 
 // Update reservation status.
-// Restricted donors cannot manage reservations, but Admins can.
 router.patch(
   '/:id/status',
   protect,
   donorOnly,
-  requireActiveAccount,
   async (req, res) => {
     try {
       const allowedStatuses = [
