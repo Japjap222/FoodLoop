@@ -98,11 +98,24 @@ const canManage = (listing, user) => {
 };
 
 // GET all listings.
-// Public browsing remains available to everyone.
+// Filters out food listings from deactivated or archived donor accounts.
 router.get('/', async (req, res) => {
   try {
-    const listings = await FoodListing.find().sort({ createdAt: -1 });
-    return res.json(listings);
+    const listings = await FoodListing.find()
+      .populate('donor', 'name organization email accountActive isArchived')
+      .sort({ createdAt: -1 });
+
+    const activeListings = listings.filter((listing) => {
+      const donor = listing.donor;
+      if (donor && typeof donor === 'object') {
+        if (donor.accountActive === false || donor.isArchived === true) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    return res.json(activeListings);
   } catch (error) {
     console.error('Fetch listings error:', error);
     return res.status(500).json({
