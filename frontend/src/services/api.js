@@ -179,6 +179,10 @@ export const fetchDonorReviews = (donorId) => {
   return API.get(`/reviews/donor/${donorId}`);
 };
 
+export const fetchReviews = () => {
+  return API.get('/reviews');
+};
+
 // ==============================
 // DEFAULT EXPORT
 // ==============================
