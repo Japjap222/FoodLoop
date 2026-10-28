@@ -1,4 +1,3 @@
-
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -52,8 +51,9 @@ app.use(
   })
 );
 
-// Parse JSON request bodies.
+// Body parser middleware (MUST be declared before routes)
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Root health-check endpoint.
 app.get('/', (req, res) => {
