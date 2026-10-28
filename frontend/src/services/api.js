@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 
 // ==============================
@@ -128,10 +127,6 @@ export const fetchReportStats = () =>
 // APPEALS
 // ==============================
 
-// ==============================
-// APPEALS
-// ==============================
-
 export const fetchAppeals = () =>
   API.get('/appeals');
 
@@ -141,17 +136,24 @@ export const fetchAllAppeals = () =>
 export const fetchMyAppeals = () =>
   API.get('/appeals/my');
 
-export const submitAppeal = (appealData) =>
-  API.post('/appeals', appealData);
+// Normalizes input so strings are cleanly formatted into { reason } objects
+export const submitAppeal = (appealData) => {
+  const payload =
+    typeof appealData === 'string' ? { reason: appealData } : appealData;
+  return API.post('/appeals', payload);
+};
 
-export const createAppeal = (appealData) =>
-  API.post('/appeals', appealData);
+export const createAppeal = (appealData) => {
+  const payload =
+    typeof appealData === 'string' ? { reason: appealData } : appealData;
+  return API.post('/appeals', payload);
+};
 
 export const reviewAppeal = (id, reviewData) =>
-  API.patch(`/appeals/${id}`, reviewData);
+  API.patch(`/appeals/${id}/review`, reviewData);
 
 export const updateAppeal = (id, appealData) =>
-  API.patch(`/appeals/${id}`, appealData);
+  API.patch(`/appeals/${id}/review`, appealData);
 
 export const deleteAppeal = (id) =>
   API.delete(`/appeals/${id}`);
@@ -175,10 +177,8 @@ export const updateReview = (id, reviewData) =>
 export const deleteReview = (id) =>
   API.delete(`/reviews/${id}`);
 
-export const fetchDonorReviews = (donorId) => {
-  return API.get(`/reviews/donor/${donorId}`);
-};
-
+export const fetchDonorReviews = (donorId) =>
+  API.get(`/reviews/donor/${donorId}`);
 
 // ==============================
 // DEFAULT EXPORT
