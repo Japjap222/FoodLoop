@@ -51,10 +51,8 @@ export const MyAppeals = ({ user }) => {
       setError('');
       setSuccess('');
 
-      // Send as object or string depending on service signature
-      // { reason: trimmedReason } guarantees req.body.reason is defined in Express
-      const payload = typeof submitAppeal === 'function' ? trimmedReason : { reason: trimmedReason };
-      const response = await submitAppeal(payload);
+      // Always send an object with the key "reason"
+      const response = await submitAppeal({ reason: trimmedReason });
 
       setSuccess(
         response.data?.message || 'Your appeal has been submitted.'
