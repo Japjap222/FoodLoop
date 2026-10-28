@@ -240,8 +240,14 @@ export function Reservations({ user: userProp }) {
       let response;
       if (currentUser.role === 'Recipient') {
         response = await fetchMyReviews();
-      } else if (currentUser.role === 'Donor' && typeof fetchDonorReviews === 'function') {
-        response = await fetchDonorReviews(currentUser._id || currentUser.id);
+      } else if (currentUser.role === 'Donor') {
+        // Use fetchDonorReviews passing the correct resolved user ID
+        const donorId = currentUser._id || currentUser.id || currentUser.userId;
+        if (donorId) {
+          response = await fetchDonorReviews(donorId);
+        } else {
+          response = await fetchMyReviews();
+        }
       } else {
         return;
       }
@@ -250,9 +256,10 @@ export function Reservations({ user: userProp }) {
       const newMap = new Map();
 
       reviewsList.forEach((rev) => {
+        // Extract reservation ID whether it's an object or string ID
         const resId =
           typeof rev.reservation === 'object'
-            ? String(rev.reservation?._id)
+            ? String(rev.reservation?._id || rev.reservation?.id)
             : String(rev.reservation);
 
         if (resId) {
