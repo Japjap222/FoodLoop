@@ -175,6 +175,10 @@ export const updateReview = (id, reviewData) =>
 export const deleteReview = (id) =>
   API.delete(`/reviews/${id}`);
 
+export const fetchDonorReviews = (donorId) => {
+  return API.get(`/reviews/donor/${donorId}`);
+};
+
 // ==============================
 // DEFAULT EXPORT
 // ==============================
