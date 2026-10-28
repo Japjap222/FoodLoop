@@ -81,7 +81,6 @@ const generateOtp = () =>
   crypto.randomInt(0, 1000000).toString().padStart(6, '0');
 
 const sendOtpEmail = async (email, otp) => {
-  // Add this log statement so you can grab the code from Render
   console.log(`========================================`);
   console.log(`VERIFICATION CODE FOR ${email}: ${otp}`);
   console.log(`========================================`);
@@ -125,7 +124,6 @@ const sendOtpEmail = async (email, otp) => {
 };
 
 // POST /api/auth/register
-// Creates an unverified account and sends a one-time email code.
 router.post('/register', async (req, res) => {
   let createdUser;
 
@@ -269,7 +267,6 @@ router.post('/register', async (req, res) => {
 });
 
 // POST /api/auth/verify-email
-// Verifies a one-time code and issues the login token.
 router.post('/verify-email', async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email);
@@ -356,7 +353,6 @@ router.post('/verify-email', async (req, res) => {
 });
 
 // POST /api/auth/resend-verification
-// Sends another code to an existing unverified account.
 router.post('/resend-verification', async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email);
@@ -415,8 +411,6 @@ router.post('/resend-verification', async (req, res) => {
 });
 
 // POST /api/auth/login
-// Restricted users can still log in to submit appeals.
-// New accounts must verify their email before logging in.
 router.post('/login', async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email);
@@ -436,7 +430,6 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Existing accounts without the field remain compatible.
     if (user.emailVerified === false) {
       return res.status(403).json({
         message: 'Please verify your email before signing in.',
@@ -457,10 +450,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-/**
- * PATCH /api/auth/change-password
- * Change the password of the currently authenticated user.
- */
+// PATCH /api/auth/change-password
 router.patch('/change-password', protect, async (req, res) => {
   try {
     const { currentPassword, newPassword, confirmPassword } = req.body;
@@ -526,7 +516,6 @@ router.patch('/change-password', protect, async (req, res) => {
 });
 
 // DELETE /api/auth/me
-// Preserve historical reservations and food listings.
 router.delete('/me', protect, async (req, res) => {
   try {
     if (!['Donor', 'Recipient'].includes(req.user.role)) {
@@ -560,8 +549,8 @@ router.delete('/me', protect, async (req, res) => {
     const userId = user._id;
 
     await Reservation.updateMany(
-      { recipient: userId },
-      { $unset: { recipient: 1 } }
+      { $or: [{ recipient: userId }, { user: userId }] },
+      { $unset: { recipient: 1, user: 1 }, $set: { status: 'Cancelled' } }
     );
 
     await FoodListing.updateMany(
@@ -635,7 +624,7 @@ router.get(
   }
 );
 
-// Validate an account managed by Admin.
+// Helper function to find managed account
 const findManagedAccount = async (id, res) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     res.status(400).json({ message: 'Invalid account ID.' });
@@ -659,6 +648,32 @@ const findManagedAccount = async (id, res) => {
   return user;
 };
 
+// Helper function to cancel active reservations for deactivated/archived recipient
+const cancelActiveReservations = async (userId) => {
+  try {
+    const reservationsToCancel = await Reservation.find({
+      $or: [{ recipient: userId }, { user: userId }],
+      status: { $in: ['Reserved', 'Ready'] },
+    });
+
+    for (const resItem of reservationsToCancel) {
+      if (resItem.listing && resItem.quantityReserved) {
+        await FoodListing.updateOne(
+          { _id: resItem.listing },
+          {
+            $inc: { quantity: resItem.quantityReserved },
+            $set: { status: 'Available' },
+          }
+        );
+      }
+      resItem.status = 'Cancelled';
+      await resItem.save();
+    }
+  } catch (error) {
+    console.error('Error cancelling active user reservations:', error);
+  }
+};
+
 // PATCH /api/auth/providers/:id/deactivate
 router.patch(
   '/providers/:id/deactivate',
@@ -674,8 +689,11 @@ router.patch(
       user.isArchived = false;
       await user.save();
 
+      // Cancel any active reservations made by this user
+      await cancelActiveReservations(user._id);
+
       return res.json({
-        message: 'Account deactivated. The user can still log in and appeal.',
+        message: 'Account deactivated. Active reservations were cancelled.',
         user: safeAccount(user),
       });
     } catch (error) {
@@ -737,8 +755,11 @@ router.patch(
       user.isArchived = true;
       await user.save();
 
+      // Cancel any active reservations made by this user
+      await cancelActiveReservations(user._id);
+
       return res.json({
-        message: 'Account archived. Its history has been preserved.',
+        message: 'Account archived. Active reservations were cancelled.',
         user: safeAccount(user),
       });
     } catch (error) {
