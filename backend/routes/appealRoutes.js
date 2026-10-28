@@ -144,8 +144,22 @@ router.patch(
   authorize('Admin'),
   async (req, res) => {
     try {
-      const { status, adminResponse = '' } = req.body || {};
+      const body = req.body || {};
       const reviewerId = req.user?._id || req.user?.id;
+
+      // Extract status and adminResponse safely whether sent as object or string
+      const rawStatus = body.status || body.decision || body.action || (typeof body === 'string' ? body : '');
+      const adminResponse = typeof body.adminResponse === 'string' ? body.adminResponse : '';
+
+      let status = '';
+      if (typeof rawStatus === 'string') {
+        const normalized = rawStatus.trim().toLowerCase();
+        if (normalized === 'approved' || normalized === 'approve') {
+          status = 'Approved';
+        } else if (normalized === 'rejected' || normalized === 'reject') {
+          status = 'Rejected';
+        }
+      }
 
       if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
         return res.status(400).json({
@@ -159,10 +173,7 @@ router.patch(
         });
       }
 
-      if (
-        typeof adminResponse !== 'string' ||
-        adminResponse.length > 2000
-      ) {
+      if (adminResponse.length > 2000) {
         return res.status(400).json({
           message: 'The Admin response cannot exceed 2000 characters.',
         });
