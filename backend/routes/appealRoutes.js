@@ -1,4 +1,3 @@
-
 import express from 'express';
 import mongoose from 'mongoose';
 import Appeal from '../models/Appeal.js';
@@ -67,9 +66,8 @@ router.post('/', protect, async (req, res) => {
   }
 });
 
-// GET /api/appeals/mine
-// Users can see their own appeal history, even when restricted.
-router.get('/mine', protect, async (req, res) => {
+// Handler for fetching logged-in user's appeals
+const getMyAppealsHandler = async (req, res) => {
   try {
     const appeals = await Appeal.find({
       user: req.user.id,
@@ -82,7 +80,13 @@ router.get('/mine', protect, async (req, res) => {
       message: 'Could not load your appeals.',
     });
   }
-});
+};
+
+// GET /api/appeals/mine, /api/appeals/my, and /api/appeals/user
+// Users can see their own appeal history, even when restricted.
+router.get('/mine', protect, getMyAppealsHandler);
+router.get('/my', protect, getMyAppealsHandler);
+router.get('/user', protect, getMyAppealsHandler);
 
 // GET /api/appeals
 // Only Admins can view all submitted appeals.
