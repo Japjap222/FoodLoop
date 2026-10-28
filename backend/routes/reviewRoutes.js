@@ -1,4 +1,3 @@
-
 import express from 'express';
 import mongoose from 'mongoose';
 import Review from '../models/Review.js';
@@ -206,10 +205,8 @@ router.get('/donor/:donorId', async (req, res) => {
   }
 });
 
-// ==========================================
-// GET REVIEWS WRITTEN BY THE LOGGED-IN RECIPIENT
-// ==========================================
-router.get('/mine', protect, async (req, res) => {
+// Handler function for fetching user reviews
+const getMyReviewsHandler = async (req, res) => {
   try {
     if (req.user.role !== 'Recipient') {
       return res.status(403).json({
@@ -233,6 +230,13 @@ router.get('/mine', protect, async (req, res) => {
       error: error.message,
     });
   }
-});
+};
+
+// ==========================================
+// GET REVIEWS WRITTEN BY THE LOGGED-IN RECIPIENT
+// ==========================================
+router.get('/mine', protect, getMyReviewsHandler);
+router.get('/my', protect, getMyReviewsHandler);
+router.get('/user', protect, getMyReviewsHandler);
 
 export default router;
