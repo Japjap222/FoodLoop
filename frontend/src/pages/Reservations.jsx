@@ -233,7 +233,7 @@ export function Reservations({ user: userProp }) {
     }
   }, [userProp]);
 
-  cconst loadReviews = useCallback(async () => {
+  const loadReviews = useCallback(async () => {
     const currentUser = userProp || getSavedUser();
     if (!currentUser) return;
 
