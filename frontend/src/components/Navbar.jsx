@@ -451,12 +451,14 @@ export const Navbar = ({ user, onLogout, onNavigate, activeTab }) => {
 
             <button
               type="button"
-              onClick={() => scrollToSection('how-it-works')}
+              onClick={() => {
+                document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+              }}
               className="text-gray-600 hover:text-brand-600"
             >
               How It Works
             </button>
-
+            
             <button
               type="button"
               onClick={() => setActiveModal('impact')}
