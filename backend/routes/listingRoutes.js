@@ -1,4 +1,3 @@
-
 import express from 'express';
 import mongoose from 'mongoose';
 import FoodListing from '../models/FoodListing.js';
@@ -41,7 +40,14 @@ const validatePickupSchedule = (schedule) => {
     }
     seen.add(entry.day);
 
-    if (typeof entry.isAvailable !== 'boolean') {
+    const isAvail =
+      typeof entry.isAvailable === 'boolean'
+        ? entry.isAvailable
+        : typeof entry.enabled === 'boolean'
+        ? entry.enabled
+        : undefined;
+
+    if (typeof isAvail !== 'boolean') {
       return `Choose whether ${entry.day} is open or closed.`;
     }
 
@@ -54,7 +60,7 @@ const validatePickupSchedule = (schedule) => {
       return `Enter valid pickup hours for ${entry.day}.`;
     }
 
-    if (entry.isAvailable && entry.startTime >= entry.endTime) {
+    if (isAvail && entry.startTime >= entry.endTime) {
       return `Closing time on ${entry.day} must be later than opening time.`;
     }
   }
@@ -68,13 +74,19 @@ const validatePickupSchedule = (schedule) => {
 
 const normalizePickupSchedule = (schedule) =>
   DAYS_OF_WEEK.map((day) => {
-    const entry = schedule.find((item) => item.day === day);
+    const entry = schedule.find((item) => item.day === day) || {};
+    const isAvail =
+      typeof entry.isAvailable === 'boolean'
+        ? entry.isAvailable
+        : typeof entry.enabled === 'boolean'
+        ? entry.enabled
+        : false;
 
     return {
       day,
-      isAvailable: entry.isAvailable,
-      startTime: entry.startTime,
-      endTime: entry.endTime,
+      isAvailable: isAvail,
+      startTime: entry.startTime || '09:00',
+      endTime: entry.endTime || '17:00',
     };
   });
 
