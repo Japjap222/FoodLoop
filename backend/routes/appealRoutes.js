@@ -6,15 +6,17 @@ import { protect, authorize } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
+// ==========================================
 // POST /api/appeals
-// Restricted users may still submit appeals.
+// Submit an appeal (Restricted users allowed)
+// ==========================================
 router.post('/', protect, async (req, res) => {
   try {
     const userId = req.user?._id || req.user?.id;
 
-    if (!userId) {
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(401).json({
-        message: 'Authentication failed. User ID not found.',
+        message: 'Authentication failed. Valid user ID not found.',
       });
     }
 
@@ -24,10 +26,15 @@ router.post('/', protect, async (req, res) => {
       });
     }
 
-    const reason =
-      typeof req.body?.reason === 'string'
-        ? req.body.reason.trim()
-        : '';
+    // Accepts reason from various common payload property keys
+    const rawReason =
+      req.body?.reason ||
+      req.body?.appealReason ||
+      req.body?.message ||
+      req.body?.text ||
+      '';
+
+    const reason = typeof rawReason === 'string' ? rawReason.trim() : '';
 
     if (!reason) {
       return res.status(400).json({
@@ -61,7 +68,7 @@ router.post('/', protect, async (req, res) => {
     });
 
     const result = await Appeal.findById(appeal._id)
-      .populate('user', 'name email role organization');
+      .populate('user', 'name email role organization accountActive isArchived');
 
     return res.status(201).json({
       message: 'Your appeal has been submitted to the Admin.',
@@ -76,12 +83,14 @@ router.post('/', protect, async (req, res) => {
   }
 });
 
-// Handler for fetching logged-in user's appeals
+// ==========================================
+// HANDLER FOR USER'S OWN APPEALS
+// ==========================================
 const getMyAppealsHandler = async (req, res) => {
   try {
     const userId = req.user?._id || req.user?.id;
 
-    if (!userId) {
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(401).json({ message: 'User ID not found in token.' });
     }
 
@@ -100,13 +109,14 @@ const getMyAppealsHandler = async (req, res) => {
 };
 
 // GET /api/appeals/mine, /api/appeals/my, and /api/appeals/user
-// Users can see their own appeal history, even when restricted.
 router.get('/mine', protect, getMyAppealsHandler);
 router.get('/my', protect, getMyAppealsHandler);
 router.get('/user', protect, getMyAppealsHandler);
 
+// ==========================================
 // GET /api/appeals
-// Only Admins can view all submitted appeals.
+// Admin view for all platform appeals
+// ==========================================
 router.get('/', protect, authorize('Admin'), async (req, res) => {
   try {
     const appeals = await Appeal.find()
@@ -124,8 +134,10 @@ router.get('/', protect, authorize('Admin'), async (req, res) => {
   }
 });
 
+// ==========================================
 // PATCH /api/appeals/:id/review
-// Admin approves or rejects an appeal.
+// Admin approves or rejects an appeal
+// ==========================================
 router.patch(
   '/:id/review',
   protect,
@@ -183,8 +195,7 @@ router.patch(
       appeal.reviewedBy = reviewerId;
       appeal.reviewedAt = new Date();
 
-      // An approved appeal removes restrictions and archive status.
-      // A rejected appeal leaves the account status unchanged.
+      // Approved appeal restores account Active and unarchives user
       if (status === 'Approved') {
         user.accountActive = true;
         user.isArchived = false;
