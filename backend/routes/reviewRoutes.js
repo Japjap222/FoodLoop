@@ -136,7 +136,63 @@ router.post('/', protect, async (req, res) => {
 });
 
 // ==========================================
-// GET REVIEWS FOR A DONOR
+// GET REVIEWS FOR LOGGED-IN DONOR OR ALL REVIEWS FOR ADMIN
+// ==========================================
+const getDonorOrAdminReviewsHandler = async (req, res) => {
+  try {
+    if (req.user.role === 'Donor') {
+      const reviews = await Review.find({ donor: req.user.id })
+        .populate('recipient', 'name organization email')
+        .populate('reservation')
+        .sort({ createdAt: -1 });
+
+      const ratingSummary = await Review.aggregate([
+        { $match: { donor: new mongoose.Types.ObjectId(req.user.id) } },
+        {
+          $group: {
+            _id: '$donor',
+            averageRating: { $avg: '$rating' },
+            reviewCount: { $sum: 1 },
+          },
+        },
+      ]);
+
+      const summary = ratingSummary[0] || { averageRating: 0, reviewCount: 0 };
+
+      return res.json({
+        averageRating: Number(summary.averageRating.toFixed(1)),
+        reviewCount: summary.reviewCount,
+        reviews,
+      });
+    }
+
+    if (req.user.role === 'Admin') {
+      const reviews = await Review.find()
+        .populate('recipient', 'name organization email')
+        .populate('donor', 'name organization email')
+        .populate('reservation')
+        .sort({ createdAt: -1 });
+
+      return res.json(reviews);
+    }
+
+    return res.status(403).json({
+      message: 'Access denied. Only Donors and Admins can view these reviews.',
+    });
+  } catch (error) {
+    console.error('Fetch received reviews error:', error);
+    return res.status(500).json({
+      message: 'Failed to fetch reviews.',
+      error: error.message,
+    });
+  }
+};
+
+router.get('/my-reviews', protect, getDonorOrAdminReviewsHandler);
+router.get('/donor-reviews', protect, getDonorOrAdminReviewsHandler);
+
+// ==========================================
+// GET REVIEWS FOR A SPECIFIC DONOR BY ID
 // Publicly readable.
 // ==========================================
 router.get('/donor/:donorId', async (req, res) => {
@@ -238,5 +294,10 @@ const getMyReviewsHandler = async (req, res) => {
 router.get('/mine', protect, getMyReviewsHandler);
 router.get('/my', protect, getMyReviewsHandler);
 router.get('/user', protect, getMyReviewsHandler);
+
+// ==========================================
+// GET ALL REVIEWS (ADMIN / GENERAL LIST)
+// ==========================================
+router.get('/', protect, getDonorOrAdminReviewsHandler);
 
 export default router;
