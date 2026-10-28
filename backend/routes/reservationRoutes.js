@@ -44,12 +44,15 @@ router.get('/', protect, donorOnly, async (req, res) => {
 
     const reservations = await Reservation.find(query)
       .populate('listing')
-      .populate('recipient', 'name email organization accountActive isArchived')
-      .populate('user', 'name email organization accountActive isArchived')
+      .populate({
+        path: 'recipient',
+        select: 'name email organization accountActive isArchived',
+        strictPopulate: false,
+      })
       .sort({ createdAt: -1 });
 
     const activeReservations = reservations.filter((item) => {
-      const recipientUser = item.recipient || item.user;
+      const recipientUser = item.recipient;
       if (recipientUser && typeof recipientUser === 'object') {
         if (
           recipientUser.accountActive === false ||
@@ -81,11 +84,14 @@ const getRecipientReservationsHandler = async (req, res) => {
     }
 
     const reservations = await Reservation.find({
-      $or: [{ recipient: req.user.id }, { user: req.user.id }],
+      recipient: req.user.id,
     })
       .populate('listing')
-      .populate('recipient', 'name email organization accountActive isArchived')
-      .populate('user', 'name email organization accountActive isArchived')
+      .populate({
+        path: 'recipient',
+        select: 'name email organization accountActive isArchived',
+        strictPopulate: false,
+      })
       .sort({ createdAt: -1 });
 
     return res.json(reservations);
@@ -124,14 +130,17 @@ router.get('/donor', protect, donorOnly, async (req, res) => {
         path: 'listing',
         match: req.user.role === 'Admin' ? {} : { donor: req.user.id },
       })
-      .populate('recipient', 'name email organization accountActive isArchived')
-      .populate('user', 'name email organization accountActive isArchived')
+      .populate({
+        path: 'recipient',
+        select: 'name email organization accountActive isArchived',
+        strictPopulate: false,
+      })
       .sort({ createdAt: -1 });
 
     const activeReservations = reservations.filter((item) => {
       if (!item.listing) return false;
 
-      const recipientUser = item.recipient || item.user;
+      const recipientUser = item.recipient;
       if (recipientUser && typeof recipientUser === 'object') {
         if (
           recipientUser.accountActive === false ||
@@ -276,7 +285,7 @@ router.post('/', protect, async (req, res) => {
     );
 
     const recentReservations = await Reservation.find({
-      $or: [{ recipient: personId }, { user: personId }],
+      recipient: personId,
       createdAt: { $gte: windowStart },
     })
       .select('quantityReserved createdAt')
@@ -317,7 +326,7 @@ router.post('/', protect, async (req, res) => {
     }
 
     const duplicate = await Reservation.findOne({
-      $or: [{ recipient: personId }, { user: personId }],
+      recipient: personId,
       listing: listingObjectId,
       createdAt: { $gte: windowStart },
     }).sort({ createdAt: -1 });
@@ -464,7 +473,6 @@ router.post('/', protect, async (req, res) => {
     const reservation = await Reservation.create({
       listing: listing._id,
       recipient: personId,
-      user: personId,
       recipientName: req.user.name || 'Community Recipient',
       quantityReserved,
       reservationDate,
