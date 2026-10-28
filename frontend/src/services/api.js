@@ -136,18 +136,24 @@ export const fetchAllAppeals = () =>
 export const fetchMyAppeals = () =>
   API.get('/appeals/my');
 
-// Normalizes input so strings are cleanly formatted into { reason } objects
+// Normalizes input so strings or varied object keys cleanly map to { reason: "..." }
 export const submitAppeal = (appealData) => {
-  const payload =
-    typeof appealData === 'string' ? { reason: appealData } : appealData;
-  return API.post('/appeals', payload);
+  let reasonText = '';
+
+  if (typeof appealData === 'string') {
+    reasonText = appealData;
+  } else if (typeof appealData === 'object' && appealData !== null) {
+    reasonText =
+      appealData.reason ||
+      appealData.appealReason ||
+      appealData.message ||
+      '';
+  }
+
+  return API.post('/appeals', { reason: String(reasonText).trim() });
 };
 
-export const createAppeal = (appealData) => {
-  const payload =
-    typeof appealData === 'string' ? { reason: appealData } : appealData;
-  return API.post('/appeals', payload);
-};
+export const createAppeal = (appealData) => submitAppeal(appealData);
 
 export const reviewAppeal = (id, reviewData) =>
   API.patch(`/appeals/${id}/review`, reviewData);
@@ -177,8 +183,12 @@ export const updateReview = (id, reviewData) =>
 export const deleteReview = (id) =>
   API.delete(`/reviews/${id}`);
 
-export const fetchDonorReviews = (donorId) =>
-  API.get(`/reviews/donor/${donorId}`);
+export const fetchDonorReviews = (donorId) => {
+  if (!donorId || donorId === 'all') {
+    return fetchReviews();
+  }
+  return API.get(`/reviews/donor/${donorId}`);
+};
 
 // ==============================
 // DEFAULT EXPORT
