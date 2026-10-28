@@ -7,6 +7,7 @@ import {
   createReview,
   fetchMyReviews,
   fetchDonorReviews,
+  fetchReviews,
 } from '../services/api';
 
 const STATUSES = [
